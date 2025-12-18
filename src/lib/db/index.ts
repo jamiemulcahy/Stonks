@@ -189,6 +189,90 @@ export async function requestPersistence(): Promise<boolean> {
   return navigator.storage.persist();
 }
 
+// Portfolio helpers
+export async function getPortfolios(): Promise<Portfolio[]> {
+  return db.portfolios.orderBy('createdAt').reverse().toArray();
+}
+
+export async function getPortfolio(id: number): Promise<Portfolio | undefined> {
+  return db.portfolios.get(id);
+}
+
+export async function createPortfolio(name: string): Promise<number> {
+  const id = await db.portfolios.add({
+    name,
+    createdAt: Date.now(),
+  });
+  return id as number;
+}
+
+export async function updatePortfolio(id: number, name: string): Promise<void> {
+  await db.portfolios.update(id, { name });
+}
+
+export async function deletePortfolio(id: number): Promise<void> {
+  await db.transaction('rw', [db.portfolios, db.holdings], async () => {
+    await db.holdings.where('portfolioId').equals(id).delete();
+    await db.portfolios.delete(id);
+  });
+}
+
+// Holdings helpers
+export async function getHoldings(portfolioId: number): Promise<Holding[]> {
+  return db.holdings.where('portfolioId').equals(portfolioId).toArray();
+}
+
+export async function addHolding(
+  portfolioId: number,
+  symbol: string,
+  shares: number,
+  avgCost: number
+): Promise<number> {
+  const existing = await db.holdings
+    .where('portfolioId')
+    .equals(portfolioId)
+    .and((h) => h.symbol === symbol.toUpperCase())
+    .first();
+
+  if (existing?.id) {
+    // Update existing holding - calculate new average cost
+    const totalShares = existing.shares + shares;
+    const totalCost = existing.shares * existing.avgCost + shares * avgCost;
+    const newAvgCost = totalCost / totalShares;
+
+    await db.holdings.update(existing.id, {
+      shares: totalShares,
+      avgCost: newAvgCost,
+    });
+    return existing.id;
+  }
+
+  const id = await db.holdings.add({
+    portfolioId,
+    symbol: symbol.toUpperCase(),
+    shares,
+    avgCost,
+    addedAt: Date.now(),
+  });
+  return id as number;
+}
+
+export async function updateHolding(
+  id: number,
+  shares: number,
+  avgCost: number
+): Promise<void> {
+  await db.holdings.update(id, { shares, avgCost });
+}
+
+export async function deleteHolding(id: number): Promise<void> {
+  await db.holdings.delete(id);
+}
+
+export async function getAllHoldings(): Promise<Holding[]> {
+  return db.holdings.toArray();
+}
+
 // Cache integrity check
 export async function verifyCacheIntegrity(): Promise<string[]> {
   const meta = await db.cacheMeta.toArray();

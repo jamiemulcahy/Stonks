@@ -36,14 +36,14 @@ Client-side SPA for stock ticker data visualization and portfolio tracking.
 - [ ] Sort watchlist (by name, price, change %)
 - [ ] Multiple watchlists support
 
-## Phase 4: Portfolio Tracking 📋
-- [ ] Portfolio data model (portfolios, holdings)
-- [ ] Create/edit/delete portfolios
-- [ ] Add holdings (symbol, shares, avg cost, date)
-- [ ] Edit/remove holdings
-- [ ] Calculate current value per holding
-- [ ] Calculate P&L (unrealized gains/losses)
-- [ ] Portfolio summary stats (total value, total gain/loss, day change)
+## Phase 4: Portfolio Tracking ✅ (Basic) / 🔄 (Enhancement)
+- [x] Portfolio data model (portfolios, holdings)
+- [x] Create/edit/delete portfolios
+- [x] Add holdings (symbol, shares, avg cost)
+- [x] Edit/remove holdings
+- [x] Calculate current value per holding
+- [x] Calculate P&L (unrealized gains/losses)
+- [x] Portfolio summary stats (total value, total gain/loss, day change)
 - [ ] Portfolio allocation pie chart
 - [ ] Portfolio value over time line chart
 - [ ] Import holdings from CSV (optional)
