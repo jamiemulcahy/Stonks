@@ -226,7 +226,8 @@ export async function addHolding(
   portfolioId: number,
   symbol: string,
   shares: number,
-  avgCost: number
+  avgCost: number,
+  addedAt?: number
 ): Promise<number> {
   const existing = await db.holdings
     .where('portfolioId')
@@ -240,9 +241,13 @@ export async function addHolding(
     const totalCost = existing.shares * existing.avgCost + shares * avgCost;
     const newAvgCost = totalCost / totalShares;
 
+    // Use the earlier date between existing and new
+    const earlierDate = addedAt && addedAt < existing.addedAt ? addedAt : existing.addedAt;
+
     await db.holdings.update(existing.id, {
       shares: totalShares,
       avgCost: newAvgCost,
+      addedAt: earlierDate,
     });
     return existing.id;
   }
@@ -252,7 +257,7 @@ export async function addHolding(
     symbol: symbol.toUpperCase(),
     shares,
     avgCost,
-    addedAt: Date.now(),
+    addedAt: addedAt ?? Date.now(),
   });
   return id as number;
 }
@@ -271,6 +276,20 @@ export async function deleteHolding(id: number): Promise<void> {
 
 export async function getAllHoldings(): Promise<Holding[]> {
   return db.holdings.toArray();
+}
+
+// Get candles for a specific date range
+export async function getCandlesInRange(
+  symbol: string,
+  provider: string,
+  fromDate: string,
+  toDate: string
+): Promise<DailyCandle[]> {
+  return db.dailyCandles
+    .where('symbol')
+    .equals(symbol.toUpperCase())
+    .and((c) => c.provider === provider && c.date >= fromDate && c.date <= toDate)
+    .sortBy('date');
 }
 
 // Cache integrity check

@@ -8,10 +8,16 @@ interface AddHoldingModalProps {
   onClose: () => void;
 }
 
+function getTodayString(): string {
+  const today = new Date();
+  return today.toISOString().split('T')[0] ?? '';
+}
+
 export default function AddHoldingModal({ isOpen, onClose }: AddHoldingModalProps) {
   const [symbol, setSymbol] = useState('');
   const [shares, setShares] = useState('');
   const [avgCost, setAvgCost] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState(getTodayString());
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,6 +34,7 @@ export default function AddHoldingModal({ isOpen, onClose }: AddHoldingModalProp
       setSymbol('');
       setShares('');
       setAvgCost('');
+      setPurchaseDate(getTodayString());
       setSearchResults([]);
       setError(null);
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -115,7 +122,8 @@ export default function AddHoldingModal({ isOpen, onClose }: AddHoldingModalProp
     setError(null);
 
     try {
-      await addHolding(symbol.toUpperCase(), sharesNum, costNum);
+      const addedAt = new Date(purchaseDate).getTime();
+      await addHolding(symbol.toUpperCase(), sharesNum, costNum, addedAt);
       onClose();
     } catch (err) {
       setError((err as Error).message);
@@ -207,6 +215,22 @@ export default function AddHoldingModal({ isOpen, onClose }: AddHoldingModalProp
                 value={avgCost}
                 onChange={(e) => setAvgCost(e.target.value)}
                 placeholder="e.g., 150.00"
+                className="input"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Purchase Date Input */}
+            <div className="mb-4">
+              <label htmlFor="purchaseDate" className="block text-sm text-gray-400 mb-2">
+                Purchase Date
+              </label>
+              <input
+                id="purchaseDate"
+                type="date"
+                value={purchaseDate}
+                max={getTodayString()}
+                onChange={(e) => setPurchaseDate(e.target.value)}
                 className="input"
                 disabled={isSubmitting}
               />
