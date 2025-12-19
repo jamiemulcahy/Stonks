@@ -118,11 +118,24 @@ export default function AddHoldingModal({ isOpen, onClose }: AddHoldingModalProp
       return;
     }
 
+    // Validate purchase date
+    const purchaseDateObj = new Date(purchaseDate);
+    if (isNaN(purchaseDateObj.getTime())) {
+      setError('Please enter a valid purchase date');
+      return;
+    }
+
+    // Ensure date is not in the future
+    if (purchaseDateObj > new Date()) {
+      setError('Purchase date cannot be in the future');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const addedAt = new Date(purchaseDate).getTime();
+      const addedAt = purchaseDateObj.getTime();
       await addHolding(symbol.toUpperCase(), sharesNum, costNum, addedAt);
       onClose();
     } catch (err) {

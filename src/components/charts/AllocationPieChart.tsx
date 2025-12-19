@@ -2,6 +2,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import type { HoldingWithValue } from '../../stores/portfolio';
 import { computeAllocation, formatCurrency, formatPercentage, type AllocationData } from '../../utils/portfolioCalculations';
 
+// Chart configuration constants
+const PIE_INNER_RADIUS = 60;
+const PIE_OUTER_RADIUS = 100;
+const PIE_PADDING_ANGLE = 2;
+const CHART_HEIGHT = 300;
+
 interface AllocationPieChartProps {
   holdings: HoldingWithValue[];
   isLoading?: boolean;
@@ -77,7 +83,7 @@ export default function AllocationPieChart({ holdings, isLoading }: AllocationPi
         </p>
       </div>
 
-      <div className="relative h-[300px]">
+      <div className="relative" style={{ height: CHART_HEIGHT }}>
         {isLoading && (
           <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
             <div className="text-gray-400">Loading...</div>
@@ -91,9 +97,9 @@ export default function AllocationPieChart({ holdings, isLoading }: AllocationPi
                 data={chartData}
                 cx="50%"
                 cy="45%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
+                innerRadius={PIE_INNER_RADIUS}
+                outerRadius={PIE_OUTER_RADIUS}
+                paddingAngle={PIE_PADDING_ANGLE}
                 dataKey="value"
                 nameKey="symbol"
                 labelLine={false}

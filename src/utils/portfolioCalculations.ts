@@ -1,18 +1,34 @@
 import type { DailyCandle, Holding } from '../lib/db';
 import type { HoldingWithValue } from '../stores/portfolio';
 
+/**
+ * Represents a single point in portfolio value history.
+ */
 export interface PortfolioHistoryPoint {
+  /** Date in YYYY-MM-DD format */
   date: string;
+  /** Total portfolio value in USD */
   value: number;
 }
 
+/**
+ * Data for a single slice of the allocation pie chart.
+ */
 export interface AllocationData {
+  /** Stock symbol */
   symbol: string;
+  /** Current market value in USD */
   value: number;
+  /** Percentage of total portfolio (0-100) */
   percentage: number;
+  /** Hex color for the chart segment */
   color: string;
 }
 
+/**
+ * Available date ranges for portfolio history chart.
+ * Note: Weekend days are skipped, market holidays are not currently handled.
+ */
 export type DateRange = '1W' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
 // Chart colors for pie chart segments
@@ -176,15 +192,26 @@ export function computePortfolioHistory(
   return history;
 }
 
-export function formatCurrency(value: number): string {
+/**
+ * Formats a number as USD currency.
+ * @param value - The number to format
+ * @param decimals - Number of decimal places (default: 2 for values < 1000, 0 for larger)
+ */
+export function formatCurrency(value: number, decimals?: number): string {
+  const fractionDigits = decimals ?? (Math.abs(value) < 1000 ? 2 : 0);
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(value);
 }
 
-export function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`;
+/**
+ * Formats a number as a percentage string.
+ * @param value - The percentage value (e.g., 12.5 for 12.5%)
+ * @param decimals - Number of decimal places (default: 1)
+ */
+export function formatPercentage(value: number, decimals: number = 1): string {
+  return `${value.toFixed(decimals)}%`;
 }

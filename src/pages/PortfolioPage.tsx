@@ -6,7 +6,7 @@ import { useProvider } from '../hooks/useProvider';
 import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import type { Quote } from '../lib/providers/types';
 import type { Holding } from '../lib/db';
-import type { DateRange } from '../utils/portfolioCalculations';
+import { formatCurrency, type DateRange } from '../utils/portfolioCalculations';
 import AddHoldingModal from '../components/common/AddHoldingModal';
 import CreatePortfolioModal from '../components/common/CreatePortfolioModal';
 import AllocationPieChart from '../components/charts/AllocationPieChart';
@@ -46,6 +46,7 @@ export default function PortfolioPage() {
   const {
     data: historyData,
     isLoading: historyLoading,
+    failedSymbols,
   } = usePortfolioHistory(holdings, historyRange);
 
   useEffect(() => {
@@ -154,11 +155,12 @@ export default function PortfolioPage() {
           >
             {portfolios.length > 0 ? 'New Portfolio' : 'Create Portfolio'}
           </button>
-          {activePortfolio && (
+          {activePortfolio?.id !== undefined && (
             <button
               onClick={() => {
-                if (confirm(`Delete "${activePortfolio.name}"? This will remove all holdings.`)) {
-                  deletePortfolio(activePortfolio.id!);
+                const portfolioId = activePortfolio.id;
+                if (portfolioId !== undefined && confirm(`Delete "${activePortfolio.name}"? This will remove all holdings.`)) {
+                  deletePortfolio(portfolioId);
                 }
               }}
               className="text-gray-400 hover:text-loss transition-colors"
@@ -208,6 +210,14 @@ export default function PortfolioPage() {
         </div>
       )}
 
+      {/* Failed Symbols Warning */}
+      {failedSymbols.length > 0 && (
+        <div className="bg-surface border border-loss/30 text-loss rounded-lg p-3 text-sm">
+          Failed to load historical data for: {failedSymbols.join(', ')}.
+          Chart may be incomplete.
+        </div>
+      )}
+
       {/* Charts Section */}
       {activePortfolio && holdings.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -217,7 +227,7 @@ export default function PortfolioPage() {
           />
           <PortfolioValueChart
             data={historyData}
-            isLoading={historyLoading}
+            isLoading={historyLoading || loadingQuotes}
             range={historyRange}
             onRangeChange={setHistoryRange}
           />
@@ -250,11 +260,13 @@ export default function PortfolioPage() {
                 </thead>
                 <tbody>
                   {holdingsWithQuotes.map((holding) => (
-                    <HoldingRow
-                      key={holding.id}
-                      holding={holding}
-                      onDelete={() => deleteHolding(holding.id!)}
-                    />
+                    holding.id && (
+                      <HoldingRow
+                        key={holding.id}
+                        holding={holding}
+                        onDelete={() => deleteHolding(holding.id as number)}
+                      />
+                    )
                   ))}
                 </tbody>
                 <tfoot>
@@ -333,7 +345,7 @@ function HoldingRow({ holding, onDelete }: HoldingRowProps) {
       <td className="py-4 text-right text-gray-300">{holding.shares.toLocaleString()}</td>
       <td className="py-4 text-right text-gray-300">{formatCurrency(holding.avgCost)}</td>
       <td className="py-4 text-right text-gray-300">
-        {hasQuote ? formatCurrency(holding.quote!.price) : '—'}
+        {holding.quote ? formatCurrency(holding.quote.price) : '—'}
       </td>
       <td className="py-4 text-right text-white font-medium">
         {hasQuote ? formatCurrency(holding.currentValue) : '—'}
@@ -355,13 +367,6 @@ function HoldingRow({ holding, onDelete }: HoldingRowProps) {
       </td>
     </tr>
   );
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(value);
 }
 
 function TrashIcon({ className }: { className?: string }) {
