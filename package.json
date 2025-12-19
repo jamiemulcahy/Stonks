@@ -14,6 +14,9 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.53.5"
+  },
   "dependencies": {
     "@tanstack/react-query": "^5.62.8",
     "dexie": "^4.0.10",
