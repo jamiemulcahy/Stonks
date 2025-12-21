@@ -259,15 +259,17 @@ export default function PortfolioPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {holdingsWithQuotes.map((holding) => (
-                    holding.id && (
+                  {holdingsWithQuotes.map((holding) => {
+                    const holdingId = holding.id;
+                    if (!holdingId) return null;
+                    return (
                       <HoldingRow
-                        key={holding.id}
+                        key={holdingId}
                         holding={holding}
-                        onDelete={() => deleteHolding(holding.id as number)}
+                        onDelete={() => deleteHolding(holdingId)}
                       />
-                    )
-                  ))}
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="text-sm font-medium border-t border-border">
