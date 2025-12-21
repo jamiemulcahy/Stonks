@@ -44,7 +44,7 @@ interface PortfolioState {
   createPortfolio: (name: string) => Promise<number>;
   updatePortfolio: (id: number, name: string) => Promise<void>;
   deletePortfolio: (id: number) => Promise<void>;
-  addHolding: (symbol: string, shares: number, avgCost: number) => Promise<void>;
+  addHolding: (symbol: string, shares: number, avgCost: number, addedAt?: number) => Promise<void>;
   updateHolding: (id: number, shares: number, avgCost: number) => Promise<void>;
   deleteHolding: (id: number) => Promise<void>;
   getActivePortfolio: () => Portfolio | undefined;
@@ -145,7 +145,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     }
   },
 
-  addHolding: async (symbol: string, shares: number, avgCost: number) => {
+  addHolding: async (symbol: string, shares: number, avgCost: number, addedAt?: number) => {
     const { activePortfolioId } = get();
     if (!activePortfolioId) {
       set({ error: 'No active portfolio' });
@@ -153,7 +153,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => ({
     }
 
     try {
-      await dbAddHolding(activePortfolioId, symbol, shares, avgCost);
+      await dbAddHolding(activePortfolioId, symbol, shares, avgCost, addedAt);
       const holdings = await getHoldings(activePortfolioId);
       set({ holdings });
     } catch (e) {

@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useSettingsStore } from '../stores/settings';
-import { usePortfolioStore } from '../stores/portfolio';
+import { usePortfolioStore, type HoldingWithValue } from '../stores/portfolio';
 import { useProvider } from '../hooks/useProvider';
+import { usePortfolioHistory } from '../hooks/usePortfolioHistory';
 import type { Quote } from '../lib/providers/types';
 import type { Holding } from '../lib/db';
+import { formatCurrency, type DateRange } from '../utils/portfolioCalculations';
 import AddHoldingModal from '../components/common/AddHoldingModal';
 import CreatePortfolioModal from '../components/common/CreatePortfolioModal';
+import AllocationPieChart from '../components/charts/AllocationPieChart';
+import PortfolioValueChart from '../components/charts/PortfolioValueChart';
 
 interface HoldingWithQuote extends Holding {
   quote?: Quote;
@@ -34,8 +38,16 @@ export default function PortfolioPage() {
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [isAddHoldingOpen, setIsAddHoldingOpen] = useState(false);
   const [isCreatePortfolioOpen, setIsCreatePortfolioOpen] = useState(false);
+  const [historyRange, setHistoryRange] = useState<DateRange>('3M');
 
   const activePortfolio = getActivePortfolio();
+
+  // Portfolio history for value chart
+  const {
+    data: historyData,
+    isLoading: historyLoading,
+    failedSymbols,
+  } = usePortfolioHistory(holdings, historyRange);
 
   useEffect(() => {
     loadPortfolios();
@@ -76,7 +88,7 @@ export default function PortfolioPage() {
   }
 
   // Calculate holdings with current values
-  const holdingsWithValues: HoldingWithQuote[] = holdings.map((holding) => {
+  const holdingsWithQuotes: HoldingWithQuote[] = holdings.map((holding) => {
     const quote = quotes[holding.symbol];
     const currentPrice = quote?.price ?? 0;
     const currentValue = currentPrice * holding.shares;
@@ -94,8 +106,17 @@ export default function PortfolioPage() {
     };
   });
 
+  // Map to HoldingWithValue for charts
+  const holdingsWithValues: HoldingWithValue[] = holdingsWithQuotes.map((h) => ({
+    ...h,
+    currentPrice: h.quote?.price,
+    currentValue: h.currentValue || undefined,
+    gainLoss: h.gainLoss || undefined,
+    gainLossPercent: h.gainLossPercent || undefined,
+  }));
+
   // Calculate portfolio totals
-  const totals = holdingsWithValues.reduce(
+  const totals = holdingsWithQuotes.reduce(
     (acc, h) => ({
       value: acc.value + h.currentValue,
       costBasis: acc.costBasis + h.costBasis,
@@ -134,11 +155,12 @@ export default function PortfolioPage() {
           >
             {portfolios.length > 0 ? 'New Portfolio' : 'Create Portfolio'}
           </button>
-          {activePortfolio && (
+          {activePortfolio?.id !== undefined && (
             <button
               onClick={() => {
-                if (confirm(`Delete "${activePortfolio.name}"? This will remove all holdings.`)) {
-                  deletePortfolio(activePortfolio.id!);
+                const portfolioId = activePortfolio.id;
+                if (portfolioId !== undefined && confirm(`Delete "${activePortfolio.name}"? This will remove all holdings.`)) {
+                  deletePortfolio(portfolioId);
                 }
               }}
               className="text-gray-400 hover:text-loss transition-colors"
@@ -188,6 +210,30 @@ export default function PortfolioPage() {
         </div>
       )}
 
+      {/* Failed Symbols Warning */}
+      {failedSymbols.length > 0 && (
+        <div className="bg-surface border border-loss/30 text-loss rounded-lg p-3 text-sm">
+          Failed to load historical data for: {failedSymbols.join(', ')}.
+          Chart may be incomplete.
+        </div>
+      )}
+
+      {/* Charts Section */}
+      {activePortfolio && holdings.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <AllocationPieChart
+            holdings={holdingsWithValues}
+            isLoading={loadingQuotes}
+          />
+          <PortfolioValueChart
+            data={historyData}
+            isLoading={historyLoading || loadingQuotes}
+            range={historyRange}
+            onRangeChange={setHistoryRange}
+          />
+        </div>
+      )}
+
       {/* Holdings Table */}
       {activePortfolio && (
         <div className="card overflow-hidden">
@@ -213,13 +259,17 @@ export default function PortfolioPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {holdingsWithValues.map((holding) => (
-                    <HoldingRow
-                      key={holding.id}
-                      holding={holding}
-                      onDelete={() => deleteHolding(holding.id!)}
-                    />
-                  ))}
+                  {holdingsWithQuotes.map((holding) => {
+                    const holdingId = holding.id;
+                    if (!holdingId) return null;
+                    return (
+                      <HoldingRow
+                        key={holdingId}
+                        holding={holding}
+                        onDelete={() => deleteHolding(holdingId)}
+                      />
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="text-sm font-medium border-t border-border">
@@ -297,7 +347,7 @@ function HoldingRow({ holding, onDelete }: HoldingRowProps) {
       <td className="py-4 text-right text-gray-300">{holding.shares.toLocaleString()}</td>
       <td className="py-4 text-right text-gray-300">{formatCurrency(holding.avgCost)}</td>
       <td className="py-4 text-right text-gray-300">
-        {hasQuote ? formatCurrency(holding.quote!.price) : '—'}
+        {holding.quote ? formatCurrency(holding.quote.price) : '—'}
       </td>
       <td className="py-4 text-right text-white font-medium">
         {hasQuote ? formatCurrency(holding.currentValue) : '—'}
@@ -319,13 +369,6 @@ function HoldingRow({ holding, onDelete }: HoldingRowProps) {
       </td>
     </tr>
   );
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(value);
 }
 
 function TrashIcon({ className }: { className?: string }) {
